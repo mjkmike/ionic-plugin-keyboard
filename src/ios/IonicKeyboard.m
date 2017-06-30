@@ -28,18 +28,24 @@
     NSNotificationCenter* nc = [NSNotificationCenter defaultCenter];
     __weak IonicKeyboard* weakSelf = self;
     _keyboardShowObserver = [nc addObserverForName:UIKeyboardWillShowNotification
-                               object:nil
-                               queue:[NSOperationQueue mainQueue]
-                               usingBlock:^(NSNotification* notification) {
-
-                                   CGRect keyboardFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-                                   keyboardFrame = [self.viewController.view convertRect:keyboardFrame fromView:nil];
-
-                                   [weakSelf.commandDelegate evalJs:[NSString stringWithFormat:@"cordova.plugins.Keyboard.isVisible = true; cordova.fireWindowEvent('native.keyboardshow', { 'keyboardHeight': %@ }); ", [@(keyboardFrame.size.height) stringValue]]];
-
-                                   //deprecated
-                                   [weakSelf.commandDelegate evalJs:[NSString stringWithFormat:@"cordova.fireWindowEvent('native.showkeyboard', { 'keyboardHeight': %@ }); ", [@(keyboardFrame.size.height) stringValue]]];
-                               }];
+                                            object:nil
+                                             queue:[NSOperationQueue mainQueue]
+                                        usingBlock:^(NSNotification* notification) {
+                                            CGRect reportedKeyboardFrameRaw = [[[notification userInfo] valueForKey: UIKeyboardFrameEndUserInfoKey] CGRectValue];
+                                            
+                                            CGRect reportedKeyboardFrame = [self.viewController.view.window convertRect: reportedKeyboardFrameRaw fromWindow:nil];
+                                            
+                                            CGRect visibleKeyboardFrame = CGRectIntersection(reportedKeyboardFrame, self.viewController.view.window.frame);
+                                            
+                                            // May be needed in depricated for older versions of IOS
+                                            //CGRect keyboardFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+                                            //keyboardFrame = [self.viewController.view convertRect:keyboardFrame fromView:nil];
+                                            
+                                            [weakSelf.commandDelegate evalJs:[NSString stringWithFormat:@"cordova.plugins.Keyboard.isVisible = true; cordova.fireWindowEvent('native.keyboardshow', { 'keyboardHeight': %@ }); ", [@(visibleKeyboardFrame.size.height) stringValue]]];
+                                            
+                                            //deprecated
+                                            [weakSelf.commandDelegate evalJs:[NSString stringWithFormat:@"cordova.fireWindowEvent('native.showkeyboard', { 'keyboardHeight': %@ }); ", [@(visibleKeyboardFrame.size.height) stringValue]]];
+                                        }];
 
     _keyboardHideObserver = [nc addObserverForName:UIKeyboardWillHideNotification
                                object:nil
